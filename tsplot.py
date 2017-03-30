@@ -5,6 +5,8 @@ import numba
 
 try:
     import tqdm
+except:
+    pass
 
 import bokeh.models
 import bokeh.palettes
@@ -310,7 +312,7 @@ def time_series_plot(p, df, time, signal, identifier, time_ind=None,
 
 
 def canvas(df=None, time=None, identifier=None, light=None, height=350,
-           width=650, x_axis_label='time', y_axis_label=None):
+           width=650, x_axis_label='time', y_axis_label=None, hover=True):
     """
     Make a Bokeh Figure instance for plotting time series.
 
@@ -339,6 +341,8 @@ def canvas(df=None, time=None, identifier=None, light=None, height=350,
         x-axis label.
     y_axis_label : string or None, default None
         y-axis label
+    hover : bool, default True
+        If True, have a hover tool for plots named 'hover'.
 
     Returns
     -------
@@ -372,7 +376,7 @@ def canvas(df=None, time=None, identifier=None, light=None, height=350,
         p.renderers.extend(dark_boxes)
 
     # Add a HoverTool to highlight individuals
-    if identifier is not None:
+    if identifier is not None and hover:
         p.add_tools(bokeh.models.HoverTool(
                 tooltips=[(identifier, '@'+identifier)], names=['hover']))
 
@@ -417,6 +421,11 @@ def grid(df, time, signal, category, identifier, time_ind=None, light=None,
     light : string or None or any acceptable pandas index, default None
         Column containing Booleans for where the plot background
         is light. If None, no shaded bars are present on the figure.
+    summary_trace : string, float, or None, default 'mean'
+        Which summary statistic to use to make summary trace. If a
+        string, can one of 'mean', 'median', 'max', or 'min'. If
+        None, no summary trace is generated. If a float between
+        0 and 1, denotes which quantile to show.
     time_shift : string, default 'left'
         One of {'left', 'right', 'center', 'interval'}
         left: do not perform a time shift
@@ -428,11 +437,6 @@ def grid(df, time, signal, category, identifier, time_ind=None, light=None,
         alpha value for individual time traces
     hover_color : string, default '#535353'
         Hex value for color when hovering over a curve
-    summary_trace : string, float, or None, default 'mean'
-        Which summary statistic to use to make summary trace. If a
-        string, can one of 'mean', 'median', 'max', or 'min'. If
-        None, no summary trace is generated. If a float between
-        0 and 1, denotes which quantile to show.
     height : int, default 200
         Height of each subplot plot in pixels.
     width : int, default 650
@@ -579,7 +583,8 @@ def summary(df, time, signal, category, identifier, time_ind=None, light=None,
 
     # Create figures
     p = canvas(df, time, identifier, light, height=height, width=width,
-               x_axis_label=x_axis_label, y_axis_label=y_axis_label)
+               x_axis_label=x_axis_label, y_axis_label=y_axis_label,
+               hover=False)
 
     # Populate glyphs
     for cat in cats:

@@ -238,7 +238,7 @@ def canvas(df=None, time=None, identifier=None, light=None, height=350,
         for left, right in zip(lefts, rights):
             dark_boxes.append(
                     bokeh.models.BoxAnnotation(plot=p, left=left, right=right,
-                                               fill_alpha=0.3, fill_color='gray'))
+                                               fill_alpha=0.1, fill_color='gray'))
         p.renderers.extend(dark_boxes)
 
     # Add a HoverTool to highlight individuals

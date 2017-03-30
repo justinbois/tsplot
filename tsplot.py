@@ -177,6 +177,78 @@ def shift_time_points(t, s, time_shift):
     return new_t, new_s
 
 
+def canvas(df=None, time=None, identifier=None, light=None, height=350,
+           width=650, x_axis_label='time', y_axis_label=None, hover=True):
+    """
+    Make a Bokeh Figure instance for plotting time series.
+
+    Parameters
+    ----------
+    df : pandas DataFrame
+        Tidy DataFrame. Must have columns:
+        - identifier: ID of each time series, if `light` is not None
+        - time: time points for time series, if `light` is not None
+        - light: Column of Booleans for if light is on, if `light`
+            is not None
+    time : string or None or any acceptable pandas index, default None
+        The name of the column in `df` containing the time points.
+        Ignored is `light` is None. Otherwise, `time` cannot be None.
+    identifier : string or any acceptable pandas index, or None
+        The name of the column in `df` containing the IDs. Used with
+        the hover tool.
+    light : string or None or any acceptable pandas index, default None
+        Column containing Booleans for where the plot background
+        is light. If None, no shaded bars are present on the figure.
+    height : int, default 350
+        Height of plot in pixels.
+    width : int, default 650
+        Width of plot in pixels.
+    x_axis_label : string or None, default 'time'
+        x-axis label.
+    y_axis_label : string or None, default None
+        y-axis label
+    hover : bool, default True
+        If True, have a hover tool for plots named 'hover'.
+
+    Returns
+    -------
+    output : bokeh.plotting.Figure instance
+        Bokeh figure ready for plotting time series.
+    """
+
+    # Create figure
+    p = bokeh.plotting.figure(width=width, height=height,
+                              x_axis_label=x_axis_label,
+                              y_axis_label=y_axis_label,
+                              tools='pan,box_zoom,wheel_zoom,reset,resize,save')
+
+    if df is None:
+        return p
+
+    if light is not None:
+        if time is None:
+            raise RuntimeError('if `light` is not None, must supply `time`.')
+
+        # Determine when nights start and end
+        lefts, rights = dark(df[df[identifier]==df[identifier].unique().min()],
+                             time, light)
+
+        # Make shaded boxes
+        dark_boxes = []
+        for left, right in zip(lefts, rights):
+            dark_boxes.append(
+                    bokeh.models.BoxAnnotation(plot=p, left=left, right=right,
+                                               fill_alpha=0.3, fill_color='gray'))
+        p.renderers.extend(dark_boxes)
+
+    # Add a HoverTool to highlight individuals
+    if identifier is not None and hover:
+        p.add_tools(bokeh.models.HoverTool(
+                tooltips=[(identifier, '@'+identifier)], names=['hover']))
+
+    return p
+
+
 def time_series_plot(p, df, time, signal, identifier, time_ind=None,
                      summary_trace='mean', time_shift='left', alpha=0.75,
                      hover_color='#535353', colors=None, title=None,
@@ -311,28 +383,56 @@ def time_series_plot(p, df, time, signal, identifier, time_ind=None,
     return p
 
 
-def canvas(df=None, time=None, identifier=None, light=None, height=350,
-           width=650, x_axis_label='time', y_axis_label=None, hover=True):
+def all_traces(df, time, signal, identifier, time_ind=None,
+               light=None, summary_trace='mean', time_shift='left', alpha=0.75,
+               hover_color='#535353', height=350, width=650,
+               x_axis_label='time', y_axis_label=None, colors=None):
     """
-    Make a Bokeh Figure instance for plotting time series.
+    Make a plot of multiple time series with a summary statistic.
 
     Parameters
     ----------
     df : pandas DataFrame
-        Tidy DataFrame. Must have columns:
-        - identifier: ID of each time series, if `light` is not None
-        - time: time points for time series, if `light` is not None
-        - light: Column of Booleans for if light is on, if `light`
-            is not None
-    time : string or None or any acceptable pandas index, default None
-        The name of the column in `df` containing the time points.
-        Ignored is `light` is None. Otherwise, `time` cannot be None.
-    identifier : string or any acceptable pandas index, or None
-        The name of the column in `df` containing the IDs. Used with
-        the hover tool.
+        Tidy DataFrame minimally with columns:
+        - time: The time points; should be the same for each ID
+        - signal: The y-axis of the time series
+        - identifier: ID of each time series
+        Optionally:
+        - time_ind: Indices of time points for use in computing
+            summary statistics. Useful when the time points are
+            floats.
+        Note that if the DataFrame has a category column,
+        this is ignored and all time serires are plotted.
+    time : string or any acceptable pandas index
+        The name of the column in `df` containing the time points
+    signal : string or any acceptable pandas index
+        The name of the column in `df` containing the y-values
+    identifier : string or any acceptable pandas index
+        The name of the column in `df` containing the IDs
+    time_ind : string or any acceptable pandas index
+        The name of the column in `df` containing the time indices
+        to be used in computing summary statistics. These values
+        are used to do a groupby. Default is the column given by
+        `time`.
     light : string or None or any acceptable pandas index, default None
         Column containing Booleans for where the plot background
         is light. If None, no shaded bars are present on the figure.
+    summary_trace : string, float, or None, default 'mean'
+        Which summary statistic to use to make summary trace. If a
+        string, can one of 'mean', 'median', 'max', or 'min'. If
+        None, no summary trace is generated. If a float between
+        0 and 1, denotes which quantile to show.
+    time_shift : string, default 'left'
+        One of {'left', 'right', 'center', 'interval'}
+        left: do not perform a time shift
+        right: Align time points to right edge of interval
+        center: Align time points to the center of the interval
+        interval: Plot the signal as a horizontal line segment
+                  over the time interval
+    alpha : float, default 0.75
+        alpha value for individual time traces
+    hover_color : string, default '#535353'
+        Hex value for color when hovering over a curve
     height : int, default 350
         Height of plot in pixels.
     width : int, default 650
@@ -341,44 +441,30 @@ def canvas(df=None, time=None, identifier=None, light=None, height=350,
         x-axis label.
     y_axis_label : string or None, default None
         y-axis label
-    hover : bool, default True
-        If True, have a hover tool for plots named 'hover'.
+    colors : list or tuple of length 2, default ['#a6cee3', '#1f78b4']
+        colors[0]: hex value for color of all time series
+        colors[1]: hex value for color of summary trace
 
     Returns
     -------
     output : bokeh.plotting.Figure instance
-        Bokeh figure ready for plotting time series.
+        Bokeh plot populated with time series.
+
+    Notes
+    -----
+    .. Assumes that the signal, if binned, is aligned with the
+       *left* of the time interval. I.e., if df[time] = [0, 1, 2],
+       the values of df[signal] are assumed to be aggregated over
+       time intervals 0 to 1, 1 to 2, and 2 to 3.
     """
 
-    # Create figure
-    p = bokeh.plotting.figure(width=width, height=height,
-                              x_axis_label=x_axis_label,
-                              y_axis_label=y_axis_label,
-                              tools='pan,box_zoom,wheel_zoom,reset,resize,save')
+    p = canvas(df, time, identifier, light, height=height, width=width,
+               x_axis_label=x_axis_label, y_axis_label=y_axis_label)
 
-    if df is None:
-        return p
-
-    if light is not None:
-        if time is None:
-            raise RuntimeError('if `light` is not None, must supply `time`.')
-
-        # Determine when nights start and end
-        lefts, rights = dark(df[df[identifier]==df[identifier].unique().min()],
-                             time, light)
-
-        # Make shaded boxes
-        dark_boxes = []
-        for left, right in zip(lefts, rights):
-            dark_boxes.append(
-                    bokeh.models.BoxAnnotation(plot=p, left=left, right=right,
-                                               fill_alpha=0.3, fill_color='gray'))
-        p.renderers.extend(dark_boxes)
-
-    # Add a HoverTool to highlight individuals
-    if identifier is not None and hover:
-        p.add_tools(bokeh.models.HoverTool(
-                tooltips=[(identifier, '@'+identifier)], names=['hover']))
+    time_series_plot(
+        p, df, time, signal, identifier, time_ind=time_ind,
+        summary_trace=summary_trace, time_shift=time_shift, alpha=alpha,
+        hover_color=hover_color, colors=colors)
 
     return p
 
@@ -388,7 +474,7 @@ def grid(df, time, signal, category, identifier, time_ind=None, light=None,
          hover_color='#535353', height=200, width=650,
          x_axis_label='time', y_axis_label=None, colors=None, show_title=True):
     """
-    Generate a set of plots of time series.
+    Generate a plot of time series separated by category.
 
     Parameters
     ----------
@@ -492,7 +578,8 @@ def grid(df, time, signal, category, identifier, time_ind=None, light=None,
 def summary(df, time, signal, category, identifier, time_ind=None, light=None,
             summary_trace='mean', time_shift='left', confint=True,
             ptiles=(2.5, 97.5), n_bs_reps=1000, alpha=0.25, height=350,
-            width=650, x_axis_label='time', y_axis_label=None, colors=None):
+            width=650, x_axis_label='time', y_axis_label=None, colors=None,
+            legend=True):
     """
     Generate a set of plots of time series.
 
@@ -546,7 +633,7 @@ def summary(df, time, signal, category, identifier, time_ind=None, light=None,
         `confint` is False.
     alpha : float, default 0.25
         alpha value for confidence intervals
-    height : int, default 200
+    height : int, default 350
         Height of plot in pixels.
     width : int, default 650
         Width of plot in pixels.
@@ -560,6 +647,8 @@ def summary(df, time, signal, category, identifier, time_ind=None, light=None,
             colors[cat][1]: hex value for color of summary trace
         If none, colors are generated using paired ColorBrewer colors,
         with a maximum of six categories.
+    legend : bool, default True
+        If True, show legend.
 
     Returns
     -------
@@ -606,8 +695,12 @@ def summary(df, time, signal, category, identifier, time_ind=None, light=None,
                 line_join='bevel')
 
         # Plot the summary line
+        if legend:
+            leg = cat
+        else:
+            leg = None
         summary_line = p.line(t, y, line_width=3, color=colors[cat][1],
-                              line_join='bevel', legend=cat)
+                                line_join='bevel', legend=leg)
 
     return p
 
@@ -632,5 +725,5 @@ def get_colors(cats):
     """
     if len(cats) > 6:
         raise RuntimeError('Maxium of 6 categoriess allowed.')
-    c = bokeh.palettes.brewer['Paired'][2*len(cats)]
+    c = bokeh.palettes.brewer['Paired'][max(3, 2*len(cats))]
     return {g: (c[2*i], c[2*i+1]) for i, g in enumerate(cats)}

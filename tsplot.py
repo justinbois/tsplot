@@ -684,9 +684,12 @@ def summary(df, time, signal, category, identifier, time_ind=None, light=None,
                 time_ind=time_ind, size=n_bs_reps)
 
         # Extract and shift time points
-        t, y_low = shift_time_points(df_summ[time], df_summ[low], time_shift)
-        t, y_high = shift_time_points(df_summ[time], df_summ[high], time_shift)
-        t, y = shift_time_points(df_summ[time], df_summ[signal], time_shift)
+        t, y_low = shift_time_points(df_summ[time].values, df_summ[low].values,
+                                     time_shift)
+        t, y_high = shift_time_points(df_summ[time].values,
+                                      df_summ[high].values, time_shift)
+        t, y = shift_time_points(df_summ[time].values, df_summ[signal].values,
+                                 time_shift)
 
         # Plot confidence interval
         patch_t = np.concatenate((t, t[::-1]))

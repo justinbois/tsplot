@@ -88,7 +88,7 @@ def ts_conf_int(df, time, signal, ptiles, stat='mean', time_ind=None,
     return df_out
 
 
-def dark(df, time, light):
+def dark(df, time, light, buffer=0.0):
     """
     Compute start and end time for dark bars on plots.
 
@@ -103,6 +103,11 @@ def dark(df, time, light):
     light : string or other acceptable pandas index
         Column containing Booleans for where the plot background
         is light.
+    buffer : float, default 0.0
+        If the end of the time series is dark, how much buffer
+        to add to the right side in the same units as the time
+        column. If the time column is a datetime object, `buffer`
+        is in units of seconds.
 
     Returns
     -------
@@ -111,9 +116,16 @@ def dark(df, time, light):
     rights : ndarray
         Time points for right side of dark bars
     """
-    t = df[time].reset_index(drop=True)
-    lefts = t[np.where(np.diff(df[light].astype(int)) == -1)[0] + 1].values
-    rights = t[np.where(np.diff(df[light].astype(int)) == 1)[0]].values
+    if df[time].dtype == '<M8[ns]':
+        buffer *= 1e9
+
+    t = df[time].values
+    lefts = t[np.where(np.diff(df[light].astype(int)) == -1)[0] + 1]
+    rights = t[np.where(np.diff(df[light].astype(int)) == 1)[0] + 1]
+
+    if len(lefts) > len(rights):
+        rights = np.concatenate((rights, (t[-1] + buffer,)))
+
     return lefts, rights
 
 

@@ -689,25 +689,34 @@ def summary(df, time, signal, category, identifier, time_ind=None, light=None,
 
     # Populate glyphs
     for cat in cats:
-        print('Performing bootstrap estimates for {0:s}....'.format(cat))
         sub_df = df.loc[df[category]==cat, :]
-        df_summ = ts_conf_int(
-                sub_df, time, signal, ptiles, stat=summary_trace,
-                time_ind=time_ind, size=n_bs_reps)
+        if confint:
+            print('Performing bootstrap estimates for {0:s}....'.format(cat))
+            df_summ = ts_conf_int(
+                    sub_df, time, signal, ptiles, stat=summary_trace,
+                    time_ind=time_ind, size=n_bs_reps)
 
-        # Extract and shift time points
-        t, y_low = shift_time_points(df_summ[time].values, df_summ[low].values,
-                                     time_shift)
-        t, y_high = shift_time_points(df_summ[time].values,
-                                      df_summ[high].values, time_shift)
-        t, y = shift_time_points(df_summ[time].values, df_summ[signal].values,
-                                 time_shift)
+            # Extract and shift time points
+            t, y_low = shift_time_points(df_summ[time].values,
+                                         df_summ[low].values, time_shift)
+            t, y_high = shift_time_points(df_summ[time].values,
+                                          df_summ[high].values, time_shift)
+            t, y = shift_time_points(df_summ[time].values,
+                                     df_summ[signal].values, time_shift)
 
-        # Plot confidence interval
-        patch_t = np.concatenate((t, t[::-1]))
-        patch_y = np.concatenate((y_low, y_high[::-1]))
-        p.patch(patch_t, patch_y, color=colors[cat][0], fill_alpha=alpha,
-                line_join='bevel')
+            # Plot confidence interval
+            patch_t = np.concatenate((t, t[::-1]))
+            patch_y = np.concatenate((y_low, y_high[::-1]))
+            p.patch(patch_t, patch_y, color=colors[cat][0], fill_alpha=alpha,
+                    line_join='bevel')
+        else:
+            if summary_trace == 'mean':
+                y = sub_df.groupby(time_ind)[signal].mean().values
+            elif summary_trace == 'median':
+                y = df.groupby(time_ind)[signal].median().values
+            t = sub_df.loc[sub_df[identifier]==sub_df[identifier].unique()[0],
+                           time].values
+            t, y = shift_time_points(t, y, time_shift)
 
         # Plot the summary line
         if legend:

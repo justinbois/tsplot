@@ -1,8 +1,3 @@
-=======
-History
-=======
+# History
 
-0.1.0 (2017-06-16)
-------------------
-
-* First release on PyPI.
+History is what's happening.

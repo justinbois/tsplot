@@ -564,7 +564,7 @@ def grid(df, time, signal, category, identifier, cats=None, time_ind=None,
     # Get the categories
     if cats is None:
         cats = df[category].unique()
-    elif np.isin(cats, df[category].unique()).all():
+    elif not np.isin(cats, df[category].unique()).all():
         raise RuntimeError('Specified `cats` not all present in df[category].')
 
     # Make colors if not supplied
@@ -681,7 +681,7 @@ def summary(df, time, signal, category, identifier, cats=None, time_ind=None,
     # Get the categories
     if cats is None:
         cats = df[category].unique()
-    elif np.isin(cats, df[category].unique()).all():
+    elif not np.isin(cats, df[category].unique()).all():
         raise RuntimeError('Specified `cats` not all present in df[category].')
 
     # Make colors if not supplied

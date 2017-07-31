@@ -594,8 +594,8 @@ def grid(df, time, signal, category, identifier, cats=None, time_ind=None,
     return bokeh.layouts.gridplot([[ps[i]] for i in range(len(ps))])
 
 
-def summary(df, time, signal, category, identifier, time_ind=None, light=None,
-            summary_trace='mean', time_shift='left', confint=True,
+def summary(df, time, signal, category, identifier, cats=None, time_ind=None,
+            light=None, summary_trace='mean', time_shift='left', confint=True,
             ptiles=(2.5, 97.5), n_bs_reps=1000, alpha=0.25, height=350,
             width=650, x_axis_label='time', y_axis_label=None, colors=None,
             legend=True):
@@ -624,6 +624,10 @@ def summary(df, time, signal, category, identifier, time_ind=None, light=None,
         series into respective subplots.
     identifier : string or any acceptable pandas index
         The name of the column in `df` containing the IDs
+    cats : list or tuple, default None
+        List of categories to include in plot, in order. Each entry
+        must be present in df['category']. If None, defaults to
+        cats = df['category'].unique().
     time_ind : string or any acceptable pandas index
         The name of the column in `df` containing the time indices
         to be used in computing summary statistics. These values
@@ -675,7 +679,10 @@ def summary(df, time, signal, category, identifier, time_ind=None, light=None,
         Bokeh figure with summary plots
     """
     # Get the categories
-    cats = df[category].unique()
+    if cats is None:
+        cats = df[category].unique()
+    elif np.isin(cats, df[category].unique()).all():
+        raise RuntimeError('Specified `cats` not all present in df[category].')
 
     # Make colors if not supplied
     if colors is None:

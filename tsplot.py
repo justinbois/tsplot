@@ -232,7 +232,7 @@ def canvas(df=None, time=None, identifier=None, light=None, height=350,
     p = bokeh.plotting.figure(width=width, height=height,
                               x_axis_label=x_axis_label,
                               y_axis_label=y_axis_label,
-                              tools='pan,box_zoom,wheel_zoom,reset,resize,save')
+                              tools='pan,box_zoom,wheel_zoom,reset,save')
 
     if df is None:
         return p
